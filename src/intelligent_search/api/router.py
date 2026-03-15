@@ -30,7 +30,6 @@ async def intelligent_search(
         f"POST /search/intelligent query={request.query!r} industry={request.industry!r}"
     )
     return await service.search(
-        session_id=request.session_id,
         query=request.query,
         industry=request.industry,
         country=request.country,

@@ -36,11 +36,6 @@ class _SearchKey(BaseModel):
     tags: list[str] | None = None
 
 
-class _SessionData(BaseModel):
-    key: _SearchKey
-    params: CompanySearchParams  # resolved params sent to the repository
-
-
 _SIZE_RANGE_ORDER: dict[str, int] = {
     "1-10": 1,
     "11-50": 2,
@@ -52,9 +47,10 @@ _SIZE_RANGE_ORDER: dict[str, int] = {
     "10001+": 8,
 }
 
-_INT_SORT_KEYS: dict[str, Callable[[CompanyResult], int]] = {
-    "founded_year": lambda c: c.year_founded or 0,
-    "size": lambda c: _SIZE_RANGE_ORDER.get(c.size_range or "", 0),
+_NUMERIC_SORT_KEYS: dict[str, Callable[[CompanyResult], float]] = {
+    "founded_year": lambda c: float(c.year_founded or 0),
+    "size": lambda c: float(_SIZE_RANGE_ORDER.get(c.size_range or "", 0)),
+    "relevance": lambda c: c.score,
 }
 
 
@@ -68,7 +64,7 @@ def _sort_results(
     reverse = sort_order == "desc"
     if sort_by == "name":
         return sorted(results, key=lambda c: (c.name or "").lower(), reverse=reverse)
-    key_fn = _INT_SORT_KEYS.get(sort_by)
+    key_fn = _NUMERIC_SORT_KEYS.get(sort_by)
     if key_fn is None:
         return results
     return sorted(results, key=key_fn, reverse=reverse)
@@ -108,22 +104,19 @@ class SearchService:
     ):
         self._agent_graph = agent_graph
         self._repository = repository
-        self._sessions: dict[str, _SessionData] = {}
+        self._key_cache: dict[str, CompanySearchParams] = {}
 
-    def _cached_session(
-        self, session_id: str | None, key: _SearchKey
-    ) -> _SessionData | None:
-        if not session_id:
-            return None
-        stored = self._sessions.get(session_id)
-        return stored if (stored and stored.key == key) else None
+    def _cached_params(self, key: _SearchKey) -> CompanySearchParams | None:
+        return self._key_cache.get(key.model_dump_json())
+
+    def _store(self, key: _SearchKey, params: CompanySearchParams) -> None:
+        self._key_cache[key.model_dump_json()] = params
 
     async def search(
         self,
         query: str | None,
         page: int,
         size: int,
-        session_id: str | None = None,
         industry: str | None = None,
         country: str | None = None,
         city: str | None = None,
@@ -134,7 +127,6 @@ class SearchService:
         sort_by: str | None = None,
         sort_order: str = "asc",
     ) -> IntelligentSearchResponse:
-        sid = session_id or str(uuid4())
         key = _SearchKey(
             query=query,
             industry=industry,
@@ -145,14 +137,14 @@ class SearchService:
             size_range=size_range,
             tags=tags,
         )
-        cached = self._cached_session(session_id, key)
+        cached = self._cached_params(key)
         if cached:
-            logger.info(f"Session {session_id}: key match, skipping LLM page={page}")
-            return await self._paginate(cached, sid, page, size, sort_by, sort_order)
+            logger.info(f"Cache hit, skipping LLM | key={key!r} page={page}")
+            return await self._paginate(cached, page, size, sort_by, sort_order)
 
         if not query:
             return await self._direct_search(
-                sid=sid,
+                key=key,
                 page=page,
                 size=size,
                 industry=industry,
@@ -166,7 +158,7 @@ class SearchService:
             )
 
         return await self._agent_search(
-            sid=sid,
+            key=key,
             query=query,
             page=page,
             size=size,
@@ -183,18 +175,16 @@ class SearchService:
 
     async def _paginate(
         self,
-        stored: _SessionData,
-        sid: str,
+        params: CompanySearchParams,
         page: int,
         size: int,
         sort_by: str | None,
         sort_order: str,
     ) -> IntelligentSearchResponse:
-        params = stored.params.model_copy(update={"page": page, "size": size})
-        data = await self._repository.search(params)
+        paged = params.model_copy(update={"page": page, "size": size})
+        data = await self._repository.search(paged)
         results = _sort_results(data.results, sort_by, sort_order)
         return IntelligentSearchResponse(
-            session_id=sid,
             query="",
             query_understanding="",
             total=data.total,
@@ -205,7 +195,7 @@ class SearchService:
 
     async def _direct_search(
         self,
-        sid: str,
+        key: _SearchKey,
         page: int,
         size: int,
         industry: str | None,
@@ -230,21 +220,10 @@ class SearchService:
             page=page,
             size=size,
         )
-        self._sessions[sid] = _SessionData(
-            key=_SearchKey(
-                industry=industry,
-                country=country,
-                city=city,
-                founding_year_min=founding_year_min,
-                founding_year_max=founding_year_max,
-                size_range=size_range,
-            ),
-            params=params,
-        )
+        self._store(key, params)
         data = await self._repository.search(params)
         results = _sort_results(data.results, sort_by, sort_order)
         return IntelligentSearchResponse(
-            session_id=sid,
             query="",
             query_understanding="",
             total=data.total,
@@ -255,7 +234,7 @@ class SearchService:
 
     async def _agent_search(
         self,
-        sid: str,
+        key: _SearchKey,
         query: str,
         page: int,
         size: int,
@@ -287,6 +266,16 @@ class SearchService:
         logger.info(f"Invoking agent | query={query!r} page={page} size={size}")
         result_state = await graph.ainvoke(initial_state, config=config)
 
+        fallback = CompanySearchParams(
+            industry=industry,
+            locality=city,
+            country=country,
+            founded_year_min=founding_year_min,
+            founded_year_max=founding_year_max,
+            size_range=size_range,
+            page=1,
+            size=size,
+        )
         resolved = self._extract_resolved_params(
             result_state["messages"],
             size,
@@ -297,29 +286,15 @@ class SearchService:
             founding_year_max,
             size_range,
         )
-        if resolved:
-            self._sessions[sid] = _SessionData(
-                key=_SearchKey(
-                    query=query,
-                    industry=industry,
-                    country=country,
-                    city=city,
-                    founding_year_min=founding_year_min,
-                    founding_year_max=founding_year_max,
-                    size_range=size_range,
-                    tags=tags,
-                ),
-                params=resolved,
-            )
+        self._store(key, resolved or fallback)
 
         return self._build_response(
-            query, sid, page, size, result_state["messages"], sort_by, sort_order
+            query, page, size, result_state["messages"], sort_by, sort_order
         )
 
     def _build_response(
         self,
         query: str,
-        sid: str,
         page: int,
         size: int,
         messages: list,
@@ -331,7 +306,6 @@ class SearchService:
 
         if not search_data:
             return IntelligentSearchResponse(
-                session_id=sid,
                 query=query,
                 query_understanding=query_understanding or "No results found.",
                 total=0,
@@ -342,7 +316,6 @@ class SearchService:
 
         results = _sort_results(search_data.results, sort_by, sort_order)
         return IntelligentSearchResponse(
-            session_id=sid,
             query=query,
             query_understanding=query_understanding or "",
             total=search_data.total,

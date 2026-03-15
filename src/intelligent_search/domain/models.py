@@ -45,7 +45,6 @@ class CompanySearchResponse(BaseModel):
 
 
 class IntelligentSearchRequest(BaseModel):
-    session_id: Optional[str] = None
     query: Optional[str] = Field(default=None, max_length=500)
 
     @field_validator("query", mode="before")
@@ -60,14 +59,13 @@ class IntelligentSearchRequest(BaseModel):
     founding_year_max: Optional[int] = Field(default=None, ge=1800, le=2100)
     size_range: Optional[str] = Field(default=None, max_length=20)
     tags: Optional[list[str]] = Field(default=None)
-    sort_by: Optional[Literal["name", "size", "founded_year"]] = None
+    sort_by: Optional[Literal["name", "size", "founded_year", "relevance"]] = None
     sort_order: Literal["asc", "desc"] = "asc"
     page: int = Field(default=1, ge=1)
     size: int = Field(default=10, ge=1, le=100)
 
 
 class IntelligentSearchResponse(BaseModel):
-    session_id: str
     query: str
     query_understanding: str
     total: int
