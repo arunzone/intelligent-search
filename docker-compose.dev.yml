@@ -1,0 +1,75 @@
+# Development — source mounted for hot reload, tox available for tests/lint.
+# Usage:
+#   docker compose -f docker-compose.dev.yml up --build        (hot reload)
+#   docker compose -f docker-compose.dev.yml run --rm app tox  (full QA gate)
+#   docker compose -f docker-compose.dev.yml up --build --watch (file-watch sync)
+
+services:
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  ollama-setup:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["ollama", "pull", "llama3.2"]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev    # includes tox + dev tools
+    ports:
+      - "8001:8001"
+    volumes:
+      - .:/app                      # full mount so tox and editable install work
+      - /app/.tox                   # keep tox virtualenvs inside container
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
+      - COMPANY_SEARCH_URL=http://host.docker.internal:8000
+      - COMPANY_SEARCH_TIMEOUT=10.0
+      - HOST=0.0.0.0
+      - PORT=8001
+      - LOG_LEVEL=DEBUG
+      - PYTHONUNBUFFERED=1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      ollama-setup:
+        condition: service_completed_successfully
+    # Install package in editable mode then start with hot reload
+    command: >
+      bash -c "
+        set -e &&
+        pip install -e . &&
+        exec uvicorn intelligent_search.main:app
+          --host 0.0.0.0 --port 8001
+          --reload --reload-dir /app/src
+      "
+    # docker compose --watch syncs src/ to container without rebuild
+    develop:
+      watch:
+        - path: src/
+          action: sync
+          target: /app/src/
+        - path: setup.cfg
+          action: rebuild
+        - path: pyproject.toml
+          action: rebuild
+
+volumes:
+  ollama_data:
