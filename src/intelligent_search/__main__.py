@@ -15,6 +15,8 @@ if __name__ == "__main__":
             reload=False,
         )
     except Exception:
-        print("FATAL: failed to start — see traceback below", file=sys.stderr, flush=True)
+        print(
+            "FATAL: failed to start — see traceback below", file=sys.stderr, flush=True
+        )
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)

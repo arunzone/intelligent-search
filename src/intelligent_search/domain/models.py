@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CompanyResult(BaseModel):
@@ -17,11 +17,50 @@ class CompanyResult(BaseModel):
     locality: Optional[str] = None
     country: Optional[str] = None
     linkedin_url: Optional[str] = None
+    total_employee_estimate: Optional[int] = None
     score: float = 0.0
 
 
+class CompanySearchParams(BaseModel):
+    """Query parameters for Part 1 /companies/search — mirrors the OpenAPI spec."""
+
+    name: Optional[str] = None
+    industry: Optional[str] = None
+    locality: Optional[str] = None
+    country: Optional[str] = None
+    founded_year_min: Optional[int] = Field(default=None, ge=1800, le=2100)
+    founded_year_max: Optional[int] = Field(default=None, ge=1800, le=2100)
+    size_range: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    size: int = Field(default=10, ge=1, le=100)
+
+
+class CompanySearchResponse(BaseModel):
+    """Typed mirror of Part 1 API SearchResponse schema."""
+
+    total: int
+    page: int
+    size: int
+    results: list[CompanyResult]
+
+
 class IntelligentSearchRequest(BaseModel):
-    query: str = Field(..., min_length=1, max_length=500)
+    query: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("query", mode="before")
+    @classmethod
+    def empty_string_to_none(cls, v):
+        return v or None
+
+    industry: Optional[str] = Field(default=None, max_length=200)
+    country: Optional[str] = Field(default=None, max_length=200)
+    city: Optional[str] = Field(default=None, max_length=200)
+    founding_year_min: Optional[int] = Field(default=None, ge=1800, le=2100)
+    founding_year_max: Optional[int] = Field(default=None, ge=1800, le=2100)
+    size_range: Optional[str] = Field(default=None, max_length=20)
+    tags: Optional[list[str]] = Field(default=None)
+    sort_by: Optional[Literal["name", "size", "founded_year"]] = None
+    sort_order: Literal["asc", "desc"] = "asc"
     page: int = Field(default=1, ge=1)
     size: int = Field(default=10, ge=1, le=100)
 

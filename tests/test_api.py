@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi.testclient import TestClient
 
+from intelligent_search.api.dependencies import get_search_service
 from intelligent_search.domain.models import CompanyResult, IntelligentSearchResponse
 from intelligent_search.main import app
 
@@ -31,20 +32,18 @@ FAKE_RESPONSE = IntelligentSearchResponse(
 )
 
 
+@pytest.fixture(autouse=True)
+def stub_service():
+    mock_service = AsyncMock()
+    mock_service.search = AsyncMock(return_value=FAKE_RESPONSE)
+    app.dependency_overrides[get_search_service] = lambda: mock_service
+    yield mock_service
+    app.dependency_overrides.clear()
+
+
 @pytest.fixture
 def client():
     return TestClient(app)
-
-
-@pytest.fixture(autouse=True)
-def stub_service(monkeypatch):
-    mock_service = AsyncMock()
-    mock_service.search = AsyncMock(return_value=FAKE_RESPONSE)
-    monkeypatch.setattr(
-        "intelligent_search.api.dependencies.get_search_service",
-        lambda: mock_service,
-    )
-    return mock_service
 
 
 def test_intelligent_search_returns_200(client, stub_service):
@@ -59,9 +58,10 @@ def test_intelligent_search_returns_200(client, stub_service):
     assert "query_understanding" in data
 
 
-def test_empty_query_returns_422(client):
+def test_empty_query_returns_200(client):
+    """Empty query is valid — coerces to None and triggers direct filter search."""
     resp = client.post("/search/intelligent", json={"query": ""})
-    assert resp.status_code == 422
+    assert resp.status_code == 200
 
 
 def test_size_too_large_returns_422(client):

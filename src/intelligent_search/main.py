@@ -25,9 +25,9 @@ def _configure_logging() -> None:
             "<cyan>{name}</cyan>:<cyan>{line}</cyan> - "
             "<level>{message}</level>"
         ),
-        backtrace=True,   # full call chain on exceptions
-        diagnose=True,    # variable values in tracebacks
-        colorize=False,   # plain text — better for docker logs / log shippers
+        backtrace=True,  # full call chain on exceptions
+        diagnose=True,  # variable values in tracebacks
+        colorize=False,  # plain text — better for docker logs / log shippers
     )
 
 
@@ -61,7 +61,9 @@ def create_app() -> FastAPI:
     )
 
     @app.exception_handler(Exception)
-    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    async def unhandled_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         logger.error(
             f"Unhandled error on {request.method} {request.url}\n"
             + traceback.format_exc()

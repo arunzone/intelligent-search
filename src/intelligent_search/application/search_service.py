@@ -1,6 +1,5 @@
 """Orchestrates agent invocation and extracts structured results from graph state."""
 
-import json
 from uuid import uuid4
 
 from langchain_core.messages import AIMessage, ToolMessage
@@ -8,16 +7,54 @@ from loguru import logger
 
 from intelligent_search.agent.graph import SearchAgentGraph
 from intelligent_search.agent.state import AgentState
-from intelligent_search.domain.models import CompanyResult, IntelligentSearchResponse
+from intelligent_search.domain.models import (
+    CompanySearchParams,
+    CompanySearchResponse,
+    IntelligentSearchResponse,
+)
+from intelligent_search.infrastructure.company_search_repository import (
+    CompanySearchRepository,
+)
+
+
+def _ai_message_text(content: str | list) -> str:  # type: ignore[type-arg]
+    if isinstance(content, str):
+        return content
+    return " ".join(b.get("text", "") for b in content if isinstance(b, dict)).strip()
 
 
 class SearchService:
-    def __init__(self, agent_graph: SearchAgentGraph):
+    def __init__(
+        self, agent_graph: SearchAgentGraph, repository: CompanySearchRepository
+    ):
         self._agent_graph = agent_graph
+        self._repository = repository
 
     async def search(
-        self, query: str, page: int, size: int
+        self,
+        query: str | None,
+        page: int,
+        size: int,
+        industry: str | None = None,
+        country: str | None = None,
+        city: str | None = None,
+        founding_year_min: int | None = None,
+        founding_year_max: int | None = None,
+        size_range: str | None = None,
+        tags: list[str] | None = None,
     ) -> IntelligentSearchResponse:
+        if not query:
+            return await self._direct_search(
+                page=page,
+                size=size,
+                industry=industry,
+                country=country,
+                city=city,
+                founding_year_min=founding_year_min,
+                founding_year_max=founding_year_max,
+                size_range=size_range,
+            )
+
         graph = self._agent_graph.get_graph()
 
         initial_state = AgentState(
@@ -25,6 +62,13 @@ class SearchService:
             query=query,
             page=page,
             size=size,
+            industry=industry,
+            country=country,
+            city=city,
+            founding_year_min=founding_year_min,
+            founding_year_max=founding_year_max,
+            size_range=size_range,
+            tags=tags,
         )
         config = {"configurable": {"thread_id": str(uuid4())}}
 
@@ -32,6 +76,42 @@ class SearchService:
         result_state = await graph.ainvoke(initial_state, config=config)
 
         return self._build_response(query, page, size, result_state["messages"])
+
+    async def _direct_search(
+        self,
+        page: int,
+        size: int,
+        industry: str | None,
+        country: str | None,
+        city: str | None,
+        founding_year_min: int | None,
+        founding_year_max: int | None,
+        size_range: str | None,
+    ) -> IntelligentSearchResponse:
+        logger.info(
+            f"Direct search (no query) | industry={industry} city={city} "
+            f"country={country} page={page} size={size}"
+        )
+        data = await self._repository.search(
+            CompanySearchParams(
+                industry=industry,
+                locality=city,
+                country=country,
+                founded_year_min=founding_year_min,
+                founded_year_max=founding_year_max,
+                size_range=size_range,
+                page=page,
+                size=size,
+            )
+        )
+        return IntelligentSearchResponse(
+            query="",
+            query_understanding="",
+            total=data.total,
+            page=data.page,
+            size=data.size,
+            results=data.results,
+        )
 
     def _build_response(
         self, query: str, page: int, size: int, messages: list
@@ -49,37 +129,38 @@ class SearchService:
                 results=[],
             )
 
-        results = [CompanyResult(**hit) for hit in search_data.get("results", [])]
-
         return IntelligentSearchResponse(
             query=query,
             query_understanding=query_understanding or "",
-            total=search_data.get("total", len(results)),
-            page=search_data.get("page", page),
-            size=search_data.get("size", size),
-            results=results,
+            total=search_data.total,
+            page=search_data.page,
+            size=search_data.size,
+            results=search_data.results,
         )
 
-    def _extract_search_result(self, messages: list) -> dict | None:
-        """Return the last search_companies ToolMessage payload."""
+    def _extract_search_result(self, messages: list) -> CompanySearchResponse | None:
+        """Return the last search_companies ToolMessage payload as a typed object."""
         for msg in reversed(messages):
-            if isinstance(msg, ToolMessage) and msg.name == "search_companies":
-                try:
-                    return json.loads(msg.content)
-                except (json.JSONDecodeError, TypeError):
-                    logger.warning("Could not parse search_companies tool response")
+            result = self._parse_tool_message(msg)
+            if result is not None:
+                return result
         return None
+
+    def _parse_tool_message(self, msg: object) -> CompanySearchResponse | None:
+        if not (isinstance(msg, ToolMessage) and msg.name == "search_companies"):
+            return None
+        if not isinstance(msg.content, str):
+            logger.warning("search_companies tool response is not a string")
+            return None
+        try:
+            return CompanySearchResponse.model_validate_json(msg.content)
+        except (ValueError, TypeError):
+            logger.warning("Could not parse search_companies tool response")
+            return None
 
     def _extract_agent_summary(self, messages: list) -> str:
         """Return the final AI text (the agent's plain-language summary)."""
         for msg in reversed(messages):
             if isinstance(msg, AIMessage) and not msg.tool_calls:
-                if isinstance(msg.content, str):
-                    return msg.content
-                if isinstance(msg.content, list):
-                    # some models return content as a list of blocks
-                    texts = [
-                        b.get("text", "") for b in msg.content if isinstance(b, dict)
-                    ]
-                    return " ".join(texts).strip()
+                return _ai_message_text(msg.content)
         return ""

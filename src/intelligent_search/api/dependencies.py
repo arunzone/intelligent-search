@@ -27,4 +27,4 @@ def get_agent_graph() -> SearchAgentGraph:
 
 @lru_cache(maxsize=1)
 def get_search_service() -> SearchService:
-    return SearchService(agent_graph=get_agent_graph())
+    return SearchService(agent_graph=get_agent_graph(), repository=get_repository())

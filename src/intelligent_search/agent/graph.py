@@ -44,6 +44,7 @@ class SearchAgentGraph:
         ).bind_tools(tools)
         set_debug(True)
         set_verbose(True)
+
         async def agent_node(state: AgentState) -> dict:
             system = SystemMessage(content=SYSTEM_PROMPT)
             response = await model.ainvoke([system] + state.messages)

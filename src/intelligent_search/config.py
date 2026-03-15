@@ -17,9 +17,8 @@ class Settings(BaseSettings):
     )
     company_search_timeout: float = Field(default=10.0, alias="COMPANY_SEARCH_TIMEOUT")
 
-
     # Service
-    host: str = Field(default="0.0.0.0", alias="HOST")
+    host: str = Field(default="0.0.0.0", alias="HOST")  # nosec B104 — intentional, container networking requires binding all interfaces
     port: int = Field(default=8001, alias="PORT")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 

@@ -26,9 +26,18 @@ async def intelligent_search(
     - "small software startups founded after 2015"
     - "healthcare companies in Germany with more than 1000 employees"
     """
-    logger.info(f"POST /search/intelligent query={request.query!r}")
+    logger.info(
+        f"POST /search/intelligent query={request.query!r} industry={request.industry!r}"
+    )
     return await service.search(
         query=request.query,
+        industry=request.industry,
+        country=request.country,
+        city=request.city,
+        founding_year_min=request.founding_year_min,
+        founding_year_max=request.founding_year_max,
+        size_range=request.size_range,
+        tags=request.tags,
         page=request.page,
         size=request.size,
     )

@@ -9,7 +9,14 @@ class AgentState(BaseModel):
 
     messages: Annotated[list, add_messages]
 
-    # Original query and pagination — tools read these via InjectedState
+    # Original query, pagination, and explicit filters — tools read these via InjectedState
     query: str
     page: int = 1
     size: int = 10
+    industry: str | None = None
+    country: str | None = None
+    city: str | None = None
+    founding_year_min: int | None = None
+    founding_year_max: int | None = None
+    size_range: str | None = None
+    tags: list[str] | None = None
