@@ -52,14 +52,7 @@ services:
       ollama-setup:
         condition: service_completed_successfully
     # Install package in editable mode then start with hot reload
-    command: >
-      bash -c "
-        set -e &&
-        pip install -e . &&
-        exec uvicorn intelligent_search.main:app
-          --host 0.0.0.0 --port 8001
-          --reload --reload-dir /app/src
-      "
+    command: ["bash", "-c", "pip install -e . --quiet && exec uvicorn intelligent_search.main:app --host 0.0.0.0 --port 8001 --reload --reload-dir /app/src"]
     # docker compose --watch syncs src/ to container without rebuild
     develop:
       watch:

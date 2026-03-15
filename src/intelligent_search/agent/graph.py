@@ -1,5 +1,7 @@
 """LangGraph agent graph for intelligent company search."""
 
+from importlib.resources import files
+from langchain_core.globals import set_debug, set_verbose
 from langchain_core.messages import SystemMessage
 from langchain_ollama import ChatOllama
 from langgraph.checkpoint.memory import MemorySaver
@@ -14,21 +16,11 @@ from intelligent_search.infrastructure.company_search_repository import (
     CompanySearchRepository,
 )
 
-SYSTEM_PROMPT = """You are an intelligent company search assistant.
-
-Your job is to understand natural language queries about companies and translate them
-into precise database searches using the search_companies tool.
-
-Guidelines:
-- Always call search_companies at least once before finishing.
-- Map the user's natural language to the correct industry and location filters.
-- If the user mentions a broad concept (e.g. "tech"), map it to the closest known industry.
-- If the user specifies a size (e.g. "small companies"), pick the appropriate size_range.
-- If the user specifies a time period (e.g. "founded in the 90s"), use founded_year_min/max.
-- After getting results, summarise what you found in plain language.
-
-Always respond with a brief explanation of how you interpreted the query and what was found.
-"""
+SYSTEM_PROMPT = (
+    files("intelligent_search.resources.prompts")
+    .joinpath("search_prompt.txt")
+    .read_text(encoding="utf-8")
+)
 
 
 class SearchAgentGraph:
@@ -50,7 +42,8 @@ class SearchAgentGraph:
             model=self._settings.ollama_model,
             base_url=self._settings.ollama_base_url,
         ).bind_tools(tools)
-
+        set_debug(True)
+        set_verbose(True)
         async def agent_node(state: AgentState) -> dict:
             system = SystemMessage(content=SYSTEM_PROMPT)
             response = await model.ainvoke([system] + state.messages)

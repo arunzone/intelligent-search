@@ -7,18 +7,16 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # Ollama — local LLM
     ollama_base_url: str = Field(
-        default="http://localhost:11434", alias="OLLAMA_BASE_URL"
+        default="http://host.docker.internal:11434", alias="OLLAMA_BASE_URL"
     )
     ollama_model: str = Field(default="llama3.2", alias="OLLAMA_MODEL")
 
-    # Part 1 — company search API
+    # Company search API
     company_search_url: str = Field(
-        default="http://localhost:8000", alias="COMPANY_SEARCH_URL"
+        default="http://host.docker.internal:8000", alias="COMPANY_SEARCH_URL"
     )
     company_search_timeout: float = Field(default=10.0, alias="COMPANY_SEARCH_TIMEOUT")
 
-    # Tavily web search (optional — enables agentic queries)
-    tavily_api_key: str = Field(default="", alias="TAVILY_API_KEY")
 
     # Service
     host: str = Field(default="0.0.0.0", alias="HOST")
