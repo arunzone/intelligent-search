@@ -117,19 +117,18 @@ def create_tools(repository: CompanySearchRepository) -> list:
             f"name={name} page={page} size={size}"
         )
 
-        result = await repository.search(
-            CompanySearchParams(
-                name=name,
-                industry=industry,
-                locality=locality,
-                country=country,
-                founded_year_min=founded_year_min,
-                founded_year_max=founded_year_max,
-                size_range=size_range,
-                page=page,
-                size=size,
-            )
+        params = CompanySearchParams(
+            name=name,
+            industry=industry,
+            locality=locality,
+            country=country,
+            founded_year_min=founded_year_min,
+            founded_year_max=founded_year_max,
+            size_range=size_range,
+            page=page,
+            size=size,
         )
+        result = await repository.search(params)
         return result.model_dump_json()
 
     return [search_companies]

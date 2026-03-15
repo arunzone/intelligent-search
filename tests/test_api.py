@@ -10,6 +10,7 @@ from intelligent_search.domain.models import CompanyResult, IntelligentSearchRes
 from intelligent_search.main import app
 
 FAKE_RESPONSE = IntelligentSearchResponse(
+    session_id="test-session-id",
     query="tech companies in california",
     query_understanding="Searching for technology companies located in California.",
     total=1,

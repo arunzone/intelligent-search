@@ -45,6 +45,7 @@ class CompanySearchResponse(BaseModel):
 
 
 class IntelligentSearchRequest(BaseModel):
+    session_id: Optional[str] = None
     query: Optional[str] = Field(default=None, max_length=500)
 
     @field_validator("query", mode="before")
@@ -66,6 +67,7 @@ class IntelligentSearchRequest(BaseModel):
 
 
 class IntelligentSearchResponse(BaseModel):
+    session_id: str
     query: str
     query_understanding: str
     total: int

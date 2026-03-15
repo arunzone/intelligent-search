@@ -32,6 +32,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev    # includes tox + dev tools
+    stdin_open: true
+    tty: true
     ports:
       - "8001:8001"
     volumes:

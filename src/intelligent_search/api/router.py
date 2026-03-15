@@ -30,6 +30,7 @@ async def intelligent_search(
         f"POST /search/intelligent query={request.query!r} industry={request.industry!r}"
     )
     return await service.search(
+        session_id=request.session_id,
         query=request.query,
         industry=request.industry,
         country=request.country,
@@ -38,6 +39,8 @@ async def intelligent_search(
         founding_year_max=request.founding_year_max,
         size_range=request.size_range,
         tags=request.tags,
+        sort_by=request.sort_by,
+        sort_order=request.sort_order,
         page=request.page,
         size=request.size,
     )
