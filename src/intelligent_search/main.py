@@ -12,6 +12,7 @@ from intelligent_search.api.dependencies import get_agent_graph
 from intelligent_search.api.router import router
 from intelligent_search.api.tags_router import router as tags_router
 from intelligent_search.config import get_settings
+from intelligent_search.telemetry import configure_telemetry, instrument_app
 
 
 def _configure_logging() -> None:
@@ -54,6 +55,8 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
 
 
 def create_app() -> FastAPI:
+    configure_telemetry()
+
     app = FastAPI(
         title="Intelligent Company Search",
         description="Natural language search over the company database via a LangGraph agent.",
@@ -76,6 +79,7 @@ def create_app() -> FastAPI:
 
     app.include_router(router)
     app.include_router(tags_router)
+    instrument_app(app)
     return app
 
 
