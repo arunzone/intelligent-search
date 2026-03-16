@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from enum import Enum
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -67,8 +69,43 @@ class IntelligentSearchRequest(BaseModel):
 
 class IntelligentSearchResponse(BaseModel):
     query: str
-    query_understanding: str
+    query_understanding: str = ""
+    total: int = 0
+    page: int = 1
+    size: int = 10
+    results: list[CompanyResult] = Field(default_factory=list)
+
+
+# ── Tagging ────────────────────────────────────────────────────────────────────
+
+
+class TagType(str, Enum):
+    public = "public"
+    personal = "personal"
+
+
+class Tag(BaseModel):
+    company_id: str
+    tag: str
+    tag_type: TagType
+    user_id: Optional[str] = None
+    created_at: datetime
+
+
+class TagSummary(BaseModel):
+    tag: str
+    tag_type: TagType
+    company_count: int
+
+
+class TagCreate(BaseModel):
+    tag: str
+    tag_type: TagType = TagType.personal
+    user_id: Optional[str] = None
+
+
+class CompanyTagsResponse(BaseModel):
     total: int
     page: int
     size: int
-    results: list[CompanyResult]
+    company_ids: list[str]

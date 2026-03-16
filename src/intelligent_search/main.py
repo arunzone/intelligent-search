@@ -10,6 +10,7 @@ from loguru import logger
 
 from intelligent_search.api.dependencies import get_agent_graph
 from intelligent_search.api.router import router
+from intelligent_search.api.tags_router import router as tags_router
 from intelligent_search.config import get_settings
 
 
@@ -74,6 +75,7 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(router)
+    app.include_router(tags_router)
     return app
 
 
