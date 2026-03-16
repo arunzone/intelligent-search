@@ -38,6 +38,7 @@ async def intelligent_search(
         founding_year_max=request.founding_year_max,
         size_range=request.size_range,
         tags=request.tags,
+        user_id=request.user_id,
         sort_by=request.sort_by,
         sort_order=request.sort_order,
         page=request.page,

@@ -125,6 +125,8 @@ def create_tools(repository: CompanySearchRepository) -> list:
             founded_year_min=founded_year_min,
             founded_year_max=founded_year_max,
             size_range=size_range,
+            tags=state.tags if state else None,
+            user_id=state.user_id if state else None,
             page=page,
             size=size,
         )

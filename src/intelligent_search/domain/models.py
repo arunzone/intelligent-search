@@ -9,6 +9,11 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
 
+class TagType(str, Enum):
+    public = "public"
+    personal = "personal"
+
+
 class CompanyResult(BaseModel):
     id: str
     name: str
@@ -33,6 +38,8 @@ class CompanySearchParams(BaseModel):
     founded_year_min: Optional[int] = Field(default=None, ge=1800, le=2100)
     founded_year_max: Optional[int] = Field(default=None, ge=1800, le=2100)
     size_range: Optional[str] = None
+    tags: Optional[list[TagType]] = Field(default=None)
+    user_id: str
     page: int = Field(default=1, ge=1)
     size: int = Field(default=10, ge=1, le=100)
 
@@ -60,7 +67,8 @@ class IntelligentSearchRequest(BaseModel):
     founding_year_min: Optional[int] = Field(default=None, ge=1800, le=2100)
     founding_year_max: Optional[int] = Field(default=None, ge=1800, le=2100)
     size_range: Optional[str] = Field(default=None, max_length=20)
-    tags: Optional[list[str]] = Field(default=None)
+    tags: list[TagType] = Field(default_factory=list)
+    user_id: str
     sort_by: Optional[Literal["name", "size", "founded_year", "relevance"]] = None
     sort_order: Literal["asc", "desc"] = "asc"
     page: int = Field(default=1, ge=1)
@@ -79,11 +87,6 @@ class IntelligentSearchResponse(BaseModel):
 # ── Tagging ────────────────────────────────────────────────────────────────────
 
 
-class TagType(str, Enum):
-    public = "public"
-    personal = "personal"
-
-
 class Tag(BaseModel):
     company_id: str
     tag: str
@@ -95,7 +98,7 @@ class Tag(BaseModel):
 class TagSummary(BaseModel):
     tag: str
     tag_type: TagType
-    company_count: int
+    company_ids: list[str]
 
 
 class TagCreate(BaseModel):

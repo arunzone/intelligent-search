@@ -14,7 +14,7 @@ class CompanySearchRepository:
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=4))
     async def search(self, params: CompanySearchParams) -> CompanySearchResponse:
-        query = params.model_dump(exclude_none=True)
+        query = params.model_dump(exclude_none=True, mode="json")
         logger.debug(f"Calling Part 1: GET /companies/search params={query}")
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.get(

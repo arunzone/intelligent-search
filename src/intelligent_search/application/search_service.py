@@ -15,6 +15,7 @@ from intelligent_search.domain.models import (
     CompanySearchParams,
     CompanySearchResponse,
     IntelligentSearchResponse,
+    TagType,
 )
 from intelligent_search.infrastructure.company_search_repository import (
     CompanySearchRepository,
@@ -33,7 +34,8 @@ class _SearchKey(BaseModel):
     founding_year_min: int | None = None
     founding_year_max: int | None = None
     size_range: str | None = None
-    tags: list[str] | None = None
+    tags: list[TagType] | None = None
+    user_id: str | None = None
 
 
 _SIZE_RANGE_ORDER: dict[str, int] = {
@@ -123,7 +125,8 @@ class SearchService:
         founding_year_min: int | None = None,
         founding_year_max: int | None = None,
         size_range: str | None = None,
-        tags: list[str] | None = None,
+        tags: list[TagType] | None = None,
+        user_id: str | None = None,
         sort_by: str | None = None,
         sort_order: str = "asc",
     ) -> IntelligentSearchResponse:
@@ -136,6 +139,7 @@ class SearchService:
             founding_year_max=founding_year_max,
             size_range=size_range,
             tags=tags,
+            user_id=user_id,
         )
         cached = self._cached_params(key)
         if cached:
@@ -153,6 +157,8 @@ class SearchService:
                 founding_year_min=founding_year_min,
                 founding_year_max=founding_year_max,
                 size_range=size_range,
+                tags=tags,
+                user_id=user_id,
                 sort_by=sort_by,
                 sort_order=sort_order,
             )
@@ -169,6 +175,7 @@ class SearchService:
             founding_year_max=founding_year_max,
             size_range=size_range,
             tags=tags,
+            user_id=user_id,
             sort_by=sort_by,
             sort_order=sort_order,
         )
@@ -204,6 +211,8 @@ class SearchService:
         founding_year_min: int | None,
         founding_year_max: int | None,
         size_range: str | None,
+        tags: list[TagType] | None,
+        user_id: str | None,
         sort_by: str | None,
         sort_order: str,
     ) -> IntelligentSearchResponse:
@@ -217,6 +226,8 @@ class SearchService:
             founded_year_min=founding_year_min,
             founded_year_max=founding_year_max,
             size_range=size_range,
+            tags=tags,
+            user_id=user_id,
             page=page,
             size=size,
         )
@@ -244,7 +255,8 @@ class SearchService:
         founding_year_min: int | None,
         founding_year_max: int | None,
         size_range: str | None,
-        tags: list[str] | None,
+        tags: list[TagType] | None,
+        user_id: str | None,
         sort_by: str | None,
         sort_order: str,
     ) -> IntelligentSearchResponse:
@@ -261,6 +273,7 @@ class SearchService:
             founding_year_max=founding_year_max,
             size_range=size_range,
             tags=tags,
+            user_id=user_id,
         )
         config = {"configurable": {"thread_id": str(uuid4())}}
         logger.info(f"Invoking agent | query={query!r} page={page} size={size}")
@@ -273,6 +286,8 @@ class SearchService:
             founded_year_min=founding_year_min,
             founded_year_max=founding_year_max,
             size_range=size_range,
+            tags=tags,
+            user_id=user_id,
             page=1,
             size=size,
         )
@@ -285,6 +300,8 @@ class SearchService:
             founding_year_min,
             founding_year_max,
             size_range,
+            tags,
+            user_id,
         )
         self._store(key, resolved or fallback)
 
@@ -334,6 +351,8 @@ class SearchService:
         founding_year_min: int | None,
         founding_year_max: int | None,
         size_range: str | None,
+        tags: list[TagType] | None,
+        user_id: str,
     ) -> CompanySearchParams | None:
         """Reconstruct the CompanySearchParams the tool sent to the repository."""
         args = _find_search_tool_args(messages)
@@ -347,6 +366,8 @@ class SearchService:
             founded_year_min=_pick(args.get("founded_year_min"), founding_year_min),
             founded_year_max=_pick(args.get("founded_year_max"), founding_year_max),
             size_range=_pick(args.get("size_range"), size_range),
+            tags=tags,
+            user_id=user_id,
             page=1,
             size=size,
         )

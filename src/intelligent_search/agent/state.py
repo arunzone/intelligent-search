@@ -20,3 +20,4 @@ class AgentState(BaseModel):
     founding_year_max: int | None = None
     size_range: str | None = None
     tags: list[str] | None = None
+    user_id: str | None = None
