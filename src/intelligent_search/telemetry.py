@@ -41,7 +41,8 @@ def instrument_app(app: object) -> None:
     from fastapi import FastAPI
     from prometheus_client import make_asgi_app
 
-    assert isinstance(app, FastAPI)
+    if not isinstance(app, FastAPI):
+        raise TypeError(f"instrument_app requires a FastAPI instance, got {type(app).__name__}")
 
     FastAPIInstrumentor.instrument_app(app)
 

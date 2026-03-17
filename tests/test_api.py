@@ -60,13 +60,13 @@ def test_intelligent_search_returns_200(client, stub_service):
 
 def test_empty_query_returns_200(client):
     """Empty query is valid — coerces to None and triggers direct filter search."""
-    resp = client.post("/search/intelligent", json={"query": ""})
+    resp = client.post("/search/intelligent", json={"query": "", "user_id": "u1"})
     assert resp.status_code == 200
 
 
 def test_size_too_large_returns_422(client):
     resp = client.post(
         "/search/intelligent",
-        json={"query": "tech companies", "size": 200},
+        json={"query": "tech companies", "size": 200, "user_id": "u1"},
     )
     assert resp.status_code == 422

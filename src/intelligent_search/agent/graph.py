@@ -3,12 +3,12 @@
 from importlib.resources import files
 from langchain_core.globals import set_debug, set_verbose
 from langchain_core.messages import SystemMessage
-from langchain_ollama import ChatOllama
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 from loguru import logger
 
+from intelligent_search.agent.model import build_model
 from intelligent_search.agent.state import AgentState
 from intelligent_search.agent.tools import create_tools
 from intelligent_search.config import Settings
@@ -38,10 +38,7 @@ class SearchAgentGraph:
     def _build(self):
         tools = create_tools(self._repository)
 
-        model = ChatOllama(
-            model=self._settings.ollama_model,
-            base_url=self._settings.ollama_base_url,
-        ).bind_tools(tools)
+        model = build_model(self._settings).bind_tools(tools)
         set_debug(True)
         set_verbose(True)
 

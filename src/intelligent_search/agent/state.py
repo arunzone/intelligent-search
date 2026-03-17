@@ -3,6 +3,8 @@ from typing import Annotated
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel
 
+from intelligent_search.domain.models import TagType
+
 
 class AgentState(BaseModel):
     """State passed between nodes in the search agent graph."""
@@ -19,5 +21,5 @@ class AgentState(BaseModel):
     founding_year_min: int | None = None
     founding_year_max: int | None = None
     size_range: str | None = None
-    tags: list[str] | None = None
+    tags: list[TagType] | None = None
     user_id: str | None = None

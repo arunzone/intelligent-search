@@ -9,6 +9,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from intelligent_search.application.search_service import SearchService
 from intelligent_search.domain.models import (
     CompanySearchResponse,
+    IntelligentSearchRequest,
     IntelligentSearchResponse,
 )
 
@@ -45,6 +46,11 @@ FAKE_SEARCH_RESULT = CompanySearchResponse(
 )
 
 
+def _make_request(**kwargs) -> IntelligentSearchRequest:
+    defaults = {"query": "software companies in california", "page": 1, "size": 10, "user_id": "u1"}
+    return IntelligentSearchRequest(**{**defaults, **kwargs})
+
+
 def _make_messages(
     include_tool_result: bool = True, summary: str = "Found 2 companies."
 ):
@@ -76,14 +82,14 @@ def _make_service(messages):
 @pytest.mark.asyncio
 async def test_search_returns_correct_total():
     service = _make_service(_make_messages())
-    response = await service.search("software companies in california", page=1, size=10)
+    response = await service.search(_make_request())
     assert response.total == 2
 
 
 @pytest.mark.asyncio
 async def test_search_returns_correct_results():
     service = _make_service(_make_messages())
-    response = await service.search("software companies in california", page=1, size=10)
+    response = await service.search(_make_request())
     assert len(response.results) == 2
     assert response.results[0].name == "acme corp"
 
@@ -91,21 +97,21 @@ async def test_search_returns_correct_results():
 @pytest.mark.asyncio
 async def test_search_returns_query_understanding():
     service = _make_service(_make_messages(summary="Found 2 companies."))
-    response = await service.search("software companies in california", page=1, size=10)
+    response = await service.search(_make_request())
     assert response.query_understanding == "Found 2 companies."
 
 
 @pytest.mark.asyncio
 async def test_search_returns_intelligent_search_response():
     service = _make_service(_make_messages())
-    response = await service.search("software companies in california", page=1, size=10)
+    response = await service.search(_make_request())
     assert isinstance(response, IntelligentSearchResponse)
 
 
 @pytest.mark.asyncio
 async def test_search_no_tool_result_returns_empty():
     service = _make_service(_make_messages(include_tool_result=False))
-    response = await service.search("unknown query", page=1, size=10)
+    response = await service.search(_make_request(query="unknown query"))
     assert response.total == 0
     assert response.results == []
 
@@ -113,6 +119,6 @@ async def test_search_no_tool_result_returns_empty():
 @pytest.mark.asyncio
 async def test_search_preserves_page_and_size():
     service = _make_service(_make_messages())
-    response = await service.search("tech companies", page=2, size=20)
+    response = await service.search(_make_request(page=2, size=20))
     assert response.page == FAKE_SEARCH_RESULT.page
     assert response.size == FAKE_SEARCH_RESULT.size

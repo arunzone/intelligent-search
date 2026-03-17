@@ -29,18 +29,4 @@ async def intelligent_search(
     logger.info(
         f"POST /search/intelligent query={request.query!r} industry={request.industry!r}"
     )
-    return await service.search(
-        query=request.query,
-        industry=request.industry,
-        country=request.country,
-        city=request.city,
-        founding_year_min=request.founding_year_min,
-        founding_year_max=request.founding_year_max,
-        size_range=request.size_range,
-        tags=request.tags,
-        user_id=request.user_id,
-        sort_by=request.sort_by,
-        sort_order=request.sort_order,
-        page=request.page,
-        size=request.size,
-    )
+    return await service.search(request)

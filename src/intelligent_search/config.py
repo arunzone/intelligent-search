@@ -5,7 +5,11 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Ollama — local LLM
+    # OpenAI — primary LLM (optional; falls back to Ollama when unset)
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
+
+    # Ollama — local LLM / fallback
     ollama_base_url: str = Field(
         default="http://host.docker.internal:11434", alias="OLLAMA_BASE_URL"
     )
