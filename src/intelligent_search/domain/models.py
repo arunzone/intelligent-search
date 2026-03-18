@@ -37,7 +37,8 @@ class CompanySearchParams(BaseModel):
     country: Optional[str] = None
     founded_year_min: Optional[int] = Field(default=None, ge=1800, le=2100)
     founded_year_max: Optional[int] = Field(default=None, ge=1800, le=2100)
-    size_range: Optional[str] = None
+    size_min: Optional[int] = Field(default=None, ge=1)
+    size_max: Optional[int] = Field(default=None, ge=1)
     tags: Optional[list[TagType]] = Field(default=None)
     user_id: str
     page: int = Field(default=1, ge=1)
@@ -66,7 +67,8 @@ class IntelligentSearchRequest(BaseModel):
     city: Optional[str] = Field(default=None, max_length=200)
     founding_year_min: Optional[int] = Field(default=None, ge=1800, le=2100)
     founding_year_max: Optional[int] = Field(default=None, ge=1800, le=2100)
-    size_range: Optional[str] = Field(default=None, max_length=20)
+    size_min: Optional[int] = Field(default=None, ge=1)
+    size_max: Optional[int] = Field(default=None, ge=1)
     tags: list[TagType] = Field(default_factory=list)
     user_id: str
     sort_by: Optional[Literal["name", "size", "founded_year", "relevance"]] = None

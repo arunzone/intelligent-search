@@ -20,6 +20,7 @@ class AgentState(BaseModel):
     city: str | None = None
     founding_year_min: int | None = None
     founding_year_max: int | None = None
-    size_range: str | None = None
+    size_min: int | None = None
+    size_max: int | None = None
     tags: list[TagType] | None = None
     user_id: str | None = None

@@ -58,24 +58,22 @@ class SearchCompaniesInput(BaseModel):
         default=None,
         description="Latest founding year (inclusive). Only set if the user mentions an end year or period, e.g. 'founded before 2000' → 2000.",
     )
-    size_range: Optional[str] = Field(
+    size_min: Optional[int] = Field(
         default=None,
-        description=(
-            "Employee size band. Only set if the user mentions company size. "
-            "Must be exactly one of: '1-10', '11-50', '51-200', '201-500', "
-            "'501-1000', '1001-5000', '5001-10000', '10001+'."
-        ),
+        description="Minimum number of employees. Only set if the user mentions a lower bound on company size.",
+    )
+    size_max: Optional[int] = Field(
+        default=None,
+        description="Maximum number of employees. Only set if the user mentions an upper bound on company size.",
     )
 
-    @field_validator("founded_year_min", "founded_year_max", mode="before")
+    @field_validator("founded_year_min", "founded_year_max", "size_min", "size_max", mode="before")
     @classmethod
     def coerce_empty_to_none_int(cls, v):
         v = _first_non_empty(v)
         return None if (not v and v != 0) else v
 
-    @field_validator(
-        "size_range", "industry", "locality", "country", "name", mode="before"
-    )
+    @field_validator("industry", "locality", "country", "name", mode="before")
     @classmethod
     def coerce_empty_to_none_str(cls, v):
         return _first_non_empty(v) or None
@@ -92,7 +90,8 @@ def create_tools(repository: CompanySearchRepository) -> list:
         name: Optional[str] = None,
         founded_year_min: Optional[int] = None,
         founded_year_max: Optional[int] = None,
-        size_range: Optional[str] = None,
+        size_min: Optional[int] = None,
+        size_max: Optional[int] = None,
         state: Annotated[Optional[AgentState], InjectedState] = None,
     ) -> str:
         """Search the company database. Only pass fields explicitly mentioned by the user — never infer or assume values."""
@@ -109,8 +108,10 @@ def create_tools(repository: CompanySearchRepository) -> list:
                 founded_year_min = state.founding_year_min
             if state.founding_year_max and not founded_year_max:
                 founded_year_max = state.founding_year_max
-            if state.size_range and not size_range:
-                size_range = state.size_range
+            if state.size_min and not size_min:
+                size_min = state.size_min
+            if state.size_max and not size_max:
+                size_max = state.size_max
 
         logger.info(
             f"search_companies | industry={industry} locality={locality} country={country} "
@@ -124,7 +125,8 @@ def create_tools(repository: CompanySearchRepository) -> list:
             country=country,
             founded_year_min=founded_year_min,
             founded_year_max=founded_year_max,
-            size_range=size_range,
+            size_min=size_min,
+            size_max=size_max,
             tags=state.tags if state else None,
             user_id=state.user_id if state else None,
             page=page,
